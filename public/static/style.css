@@ -1,0 +1,90 @@
+/* Chessboard Layout */
+.chessboard {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 1 / 1;
+    border: 4px solid #333;
+    position: relative;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Flip the board for black player */
+.flipped {
+    transform: rotate(180deg);
+}
+
+.flipped .square {
+    transform: rotate(180deg);
+}
+
+/* Chess Squares */
+.square {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.square.light {
+    background-color: #f0d9b5;
+}
+
+.square.dark {
+    background-color: #b58863;
+}
+
+/* Pieces */
+.piece {
+    font-size: 36px;
+    cursor: pointer;
+    user-select: none;
+    font-family: 'Noto Sans Symbols 2', 'Segoe UI Symbol', 'Arial Unicode MS', 'DejaVu Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.piece.white {
+    color: white;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.piece.black {
+    color: black;
+    text-shadow: 1px 1px 2px #ccc;
+}
+
+/* Dragging Effects */
+.piece.draggable {
+    cursor: grab;
+}
+
+.dragging {
+    opacity: 0.5;
+}
+
+/* Optional Highlight (if needed for last move) */
+.square.highlight {
+    outline: 2px solid yellow;
+}
+
+/* Legal Move Dot */
+.move-dot {
+    width: 12px;
+    height: 12px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* Responsive container suggestion */
+@media (max-width: 500px) {
+    .chessboard {
+        max-width: 95vw;
+    }
+}
