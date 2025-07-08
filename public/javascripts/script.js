@@ -6,9 +6,9 @@ const statusEl = document.getElementById("status");
 const winnerEl = document.getElementById("winner");
 
 let draggedPiece = null;
-let sourceSquare = null;
+let sourceSquare = null; // Holds the selected piece square
 let playerRole = null;
-let legalMoves = [];
+let legalMoves = []; // Holds all legal moves for the selected piece
 
 const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
 
@@ -54,12 +54,23 @@ const renderBoard = () => {
       squareEl.dataset.row = currentRowIndex;
       squareEl.dataset.col = currentColIndex;
 
+      // Add dot if it's a legal move target
       if (legalMoves.some(m => m.to === squareName)) {
         const dot = document.createElement('div');
         dot.classList.add('move-dot');
+        dot.addEventListener('click', () => {
+          // When dot clicked, move piece
+          if (sourceSquare) {
+            handleMove(sourceSquare, {
+              row: currentRowIndex,
+              col: currentColIndex
+            });
+          }
+        });
         squareEl.appendChild(dot);
       }
 
+      // Place pieces
       if (square) {
         const pieceEl = document.createElement('div');
         pieceEl.classList.add('piece', square.color === 'w' ? 'white' : 'black');
@@ -69,15 +80,28 @@ const renderBoard = () => {
         const isPlayersPiece = playerRole === square.color;
         pieceEl.draggable = isPlayersPiece && isPlayersTurn;
 
-        pieceEl.addEventListener('mousedown', () => {
-          if (pieceEl.draggable) {
-            sourceSquare = { row: currentRowIndex, col: currentColIndex };
+        // Select piece on click
+        pieceEl.addEventListener('click', () => {
+          if (pieceEl.draggable && isPlayersTurn) {
             const fromSquare = files[currentColIndex] + (8 - currentRowIndex);
-            legalMoves = chess.moves({ square: fromSquare, verbose: true });
-            renderBoard();
+
+            // If clicking already selected piece, unselect
+            if (
+              sourceSquare &&
+              sourceSquare.row === currentRowIndex &&
+              sourceSquare.col === currentColIndex
+            ) {
+              sourceSquare = null;
+              legalMoves = [];
+            } else {
+              sourceSquare = { row: currentRowIndex, col: currentColIndex };
+              legalMoves = chess.moves({ square: fromSquare, verbose: true });
+            }
+            renderBoard(); // Show/hide dots
           }
         });
 
+        // Drag support
         pieceEl.addEventListener('dragstart', (e) => {
           if (pieceEl.draggable) {
             draggedPiece = pieceEl;
@@ -96,6 +120,7 @@ const renderBoard = () => {
         squareEl.appendChild(pieceEl);
       }
 
+      // Allow dropping pieces
       squareEl.addEventListener('dragover', e => e.preventDefault());
       squareEl.addEventListener('drop', e => {
         e.preventDefault();
@@ -120,8 +145,18 @@ const handleMove = (from, to) => {
   const toSquare = files[to.col] + (8 - to.row);
 
   const move = { from: fromSquare, to: toSquare, promotion: 'q' };
+
+  const result = chess.move(move); // Try to make the move locally
+  if (result) {
+    socket.emit('move', move); // Notify server
+    renderBoard();             // Update board immediately
+  } else {
+    alert("Invalid move");
+  }
+
+  // Clear selection after moving
   legalMoves = [];
-  socket.emit('move', move);
+  sourceSquare = null;
 };
 
 const getPieceUnicode = (piece) => {
@@ -133,6 +168,7 @@ const getPieceUnicode = (piece) => {
   return unicodeMap[code] || '';
 };
 
+// Socket events
 socket.on('playerRole', role => {
   playerRole = role;
   renderBoard();
@@ -147,12 +183,14 @@ socket.on('spectorRole', () => {
 socket.on('move', move => {
   chess.move(move);
   legalMoves = [];
+  sourceSquare = null;
   renderBoard();
 });
 
 socket.on('boardState', fen => {
   chess.load(fen);
   legalMoves = [];
+  sourceSquare = null;
   renderBoard();
 });
 
