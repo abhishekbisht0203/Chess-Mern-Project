@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Chess.dev - Real-Time Chess Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        
+        .chess-container {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 24px;
+        }
+        
+        .chessboard {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 3px solid #374151;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 
+                0 20px 25px -5px rgba(0, 0, 0, 0.3),
+                0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .square.light {
+            background: #f0d9b5;
+        }
+        
+        .square.dark {
+            background: #b58863;
+        }
+        
+        .square:hover {
+            filter: brightness(1.1);
+        }
+        
+        .square.selected {
+            background: #10b981 !important;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.5);
+        }
+        
+        .square.legal-move {
+            background: rgba(16, 185, 129, 0.3) !important;
+        }
+        
+        .piece {
+            font-size: 2.2rem;
+            cursor: grab;
+            user-select: none;
+            transition: all 0.2s ease;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+        
+        .piece:hover {
+            transform: scale(1.05);
+        }
+        
+        .piece:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+        
+        .piece.white {
+            color: #ffffff;
+            text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+        }
+        
+        .piece.black {
+            color: #1f2937;
+            text-shadow: 0 0 3px rgba(255, 255, 255, 0.3);
+        }
+        
+        .move-dot {
+            width: 16px;
+            height: 16px;
+            background: rgba(16, 185, 129, 0.7);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .move-dot:hover {
+            background: rgba(16, 185, 129, 0.9);
+            transform: scale(1.2);
+        }
+        
+        .player-panel {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .timer {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 2px solid #374151;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #e2e8f0;
+            min-width: 100px;
+            text-align: center;
+        }
+        
+        .timer.active {
+            border-color: #10b981;
+            color: #10b981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+            animation: timerPulse 2s infinite;
+        }
+        
+        .timer.warning {
+            border-color: #f59e0b;
+            color: #f59e0b;
+            animation: warningPulse 1s infinite;
+        }
+        
+        .timer.danger {
+            border-color: #ef4444;
+            color: #ef4444;
+            animation: dangerPulse 0.5s infinite;
+        }
+        
+        @keyframes timerPulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.5); }
+        }
+        
+        @keyframes warningPulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.6); }
+        }
+        
+        @keyframes dangerPulse {
+            0%, 100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.6); }
+        }
+        
+        .control-panel {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .control-btn {
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-btn.undo {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .control-btn.undo:hover {
+            background: #2563eb;
+        }
+        
+        .control-btn.draw {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .control-btn.draw:hover {
+            background: #d97706;
+        }
+        
+        .control-btn.resign {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .control-btn.resign:hover {
+            background: #dc2626;
+        }
+        
+        .info-panel {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .move-history {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        
+        .move-history::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .move-history::-webkit-scrollbar-track {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        
+        .move-history::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        
+        .move-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .move-item:hover {
+            background: rgba(148, 163, 184, 0.1);
+        }
+        
+        .turn-indicator {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin: 16px auto;
+            max-width: 300px;
+        }
+        
+        .turn-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .captured-piece {
+            font-size: 1.2rem;
+            margin: 2px;
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .captured-piece:hover {
+            opacity: 1;
+        }
+        
+        .status-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .logo-icon {
+            font-size: 2rem;
+            color: #fbbf24;
+        }
+        
+        .logo-text {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #e2e8f0;
+        }
+        
+        .status-badge {
+            background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: #e2e8f0;
+            font-weight: 500;
+            display: inline-block;
+        }
+        
+        .winner-badge {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 12px 24px;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="chess-container">
+        <!-- Header -->
+        <div class="status-header">
+            <div class="logo">
+                <i class="fas fa-chess-king logo-icon"></i>
+                <span class="logo-text">Chess.dev</span>
+            </div>
+            <div id="status" class="status-badge">Turn: White</div>
+            <div id="winner" class="winner-badge hidden"></div>
+        </div>
+
+        <!-- Main Game Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Left Panel - Game Controls -->
+            <div class="space-y-4">
+                <!-- Black Player -->
+                <div class="player-panel">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-300"></i>
+                        </div>
+                        <div>
+                            <div class="text-white font-semibold">Black Player</div>
+                            <div class="text-gray-400 text-sm">Rating: 1500</div>
+                        </div>
+                    </div>
+                    <div id="black-timer" class="timer">
+                        <i class="fas fa-clock mr-1"></i>10:00
+                    </div>
+                </div>
+
+                <!-- Game Controls -->
+                <div class="control-panel">
+                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                        <i class="fas fa-cog"></i>Game Controls
+                    </h3>
+                    <button class="control-btn undo" onclick="requestUndo()">
+                        <i class="fas fa-undo"></i>Request Undo
+                    </button>
+                    <button class="control-btn draw" onclick="offerDraw()">
+                        <i class="fas fa-handshake"></i>Offer Draw
+                    </button>
+                    <button class="control-btn resign" onclick="resignGame()">
+                        <i class="fas fa-flag"></i>Resign
+                    </button>
+                </div>
+
+                <!-- Captured Pieces -->
+                <div class="control-panel">
+                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                        <i class="fas fa-skull"></i>Captured
+                    </h3>
+                    <div class="mb-2">
+                        <div class="text-gray-400 text-sm mb-1">Black pieces:</div>
+                        <div id="captured-black" class="flex flex-wrap"></div>
+                    </div>
+                    <div>
+                        <div class="text-gray-400 text-sm mb-1">White pieces:</div>
+                        <div id="captured-white" class="flex flex-wrap"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Center - Chess Board -->
+            <div class="lg:col-span-2 flex flex-col items-center">
+                <div class="chessboard" id="chessboard">
+                    <!-- Board squares will be generated by JavaScript -->
+                </div>
+                
+                <!-- Turn Indicator -->
+                <div class="turn-indicator">
+                    <div class="turn-dot"></div>
+                    <span id="turn-text" class="text-white font-medium">White to move</span>
+                    <div class="text-gray-400 text-sm">
+                        Move: <span id="move-number">1</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel -->
+            <div class="space-y-4">
+                <!-- White Player -->
+                <div class="player-panel">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-gray-300"></i>
+                        </div>
+                        <div>
+                            <div class="text-white font-semibold">White Player</div>
+                            <div class="text-gray-400 text-sm">Rating: 1450</div>
+                        </div>
+                    </div>
+                    <div id="white-timer" class="timer active">
+                        <i class="fas fa-clock mr-1"></i>10:00
+                    </div>
+                </div>
+
+                <!-- Move History -->
+                <div class="info-panel">
+                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                        <i class="fas fa-history"></i>Move History
+                    </h3>
+                    <div id="move-history" class="move-history">
+                        <div class="text-gray-400 text-center py-4 text-sm">No moves yet</div>
+                    </div>
+                </div>
+
+                <!-- Game Info -->
+                <div class="info-panel">
+                    <h3 class="text-white font-semibold mb-3 flex items-center gap-2">
+                        <i class="fas fa-info-circle"></i>Game Info
+                    </h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between text-gray-300">
+                            <span>Time Control:</span>
+                            <span class="text-white">10+0</span>
+                        </div>
+                        <div class="flex justify-between text-gray-300">
+                            <span>Game Type:</span>
+                            <span class="text-white">Blitz</span>
+                        </div>
+                        <div class="flex justify-between text-gray-300">
+                            <span>Status:</span>
+                            <span class="text-green-400">Active</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="/javascripts/script.js"></script>
+</body>
+</html>
